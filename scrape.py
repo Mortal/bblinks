@@ -167,6 +167,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--quiet', action='store_true')
     parser.add_argument('--cached', action='store_true')
+    parser.add_argument('--education')
+    parser.add_argument('--term', default='2015S')
     args = parser.parse_args()
     configure_logging(quiet=args.quiet)
     filters = get_filters(args)
@@ -178,7 +180,13 @@ def main():
         for parameter, options in filters
     }
     filterParameter = 'relatedEducations'
-    filterValue = filters[filterParameter]['Bacheloruddannelsen i datalogi']
+    try:
+        filterValue = filters[filterParameter][args.education]
+    except KeyError:
+        print("Pick an education among:\n%s\n\n%r is not a valid education." %
+              ('\n'.join(sorted(filters[filterParameter].keys())),
+               args.education))
+        raise SystemExit(1)
     courses = get_courses(args, filterParameter, filterValue)
     periods = (
         "Kvarter 3 + Kvarter 4 2015",
@@ -189,8 +197,9 @@ def main():
         course for course in courses
         if course['period'] in periods
     ]
-    if args.cached and os.path.exists('bb_courses.json'):
-        with open('bb_courses.json') as fp:
+    filename = 'bb_courses_%s.json' % args.term
+    if args.cached and os.path.exists(filename):
+        with open(filename) as fp:
             bb_courses = json.load(fp)
     else:
         bb_session = start_bb_session()
@@ -200,7 +209,7 @@ def main():
             name = re.sub(r' \(?Q\d(\+Q\d)?\)?$', '', name).strip()
             c = search_bb_courses(bb_session, name)
             bb_courses.append((name, c))
-        with open('bb_courses.json', 'w') as fp:
+        with open(filename, 'w') as fp:
             json.dump(bb_courses, fp, indent=2)
 
     bb_courses_dict = {}
